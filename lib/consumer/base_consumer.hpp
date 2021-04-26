@@ -31,7 +31,7 @@ public:
           //return Consume();
      //}
 
-     //virtual friend class IQueueManager<Key, Value>;
+     //virtual friend class IMultiQueueManager<Key, Value>;
      //friend State QueueManager<Key, Value>::Subscribe( ConsumerPtr<Key, Value> consumer, Key id );
 
 public:

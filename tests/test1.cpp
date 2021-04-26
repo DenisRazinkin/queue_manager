@@ -11,7 +11,7 @@
 
 #include <queue/block_concurrent_queue.hpp>
 #include <queue/lock_free_queue.hpp>
-#include <manager/mpsc_queue_manager.hpp>
+#include <manager/mpsc_mqueue_manager.hpp>
 #include <producer/base_producer.hpp>
 
 #include <examples/consumer_thread.hpp>
@@ -27,7 +27,7 @@ int iterations = 1000;
 const int producer_thread_count = 4;
 const int consumer_thread_count = 1;
 
-void producer(qm::IQueueManager<std::string, int> *manager,int id, const std::string &key )
+void producer(qm::IMultiQueueManager<std::string, int> *manager, int id, const std::string &key )
 {
      for (int i = 0; i != iterations; ++i) {
           if ( !produce.load() ) return;

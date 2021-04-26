@@ -29,7 +29,15 @@ public:
           push_cv_.notify_all();
      }
 
-     bool Empty() const { return queue_.empty(); };
+     bool Empty() const
+     {
+          std::unique_lock lock( mtx ); return queue_.empty();
+     };
+
+     std::size_t Size() const
+     {
+          std::unique_lock lock( mtx ); return queue_.size();
+     };
 
      std::optional<Value> Pop()
      {
@@ -39,7 +47,6 @@ public:
                //std::cout << "consumer " << std::this_thread::get_id() << " queue enabled_ " << IQueue<Value>::Enabled() << " queue size:" << queue_.size() << std::endl;
                pop_cv_.wait( lock, [this]()
                {
-
                     return !queue_.empty() || !IQueue<Value>::Enabled();
                } );
 
@@ -91,7 +98,7 @@ private:
      State TryPushFwd( V&& obj )
      {
           std::unique_lock lock( mtx );
-          if ( queue_.size() >= kQueueSize )
+          if ( queue_.size() >= IQueue<Value>::MaxSize() )
           {
                return State::QueueFull;
           }
@@ -117,10 +124,10 @@ private:
                push_cv_.wait( lock, [ this, obj ] ()
                {
                     //std::cout << "this queue " << this << " enabled " << IQueue<Value>::Enabled() << std::endl;
-                    return queue_.size() < kQueueSize || ! IQueue<Value>::Enabled();
+                    return queue_.size() < IQueue<Value>::MaxSize() || ! IQueue<Value>::Enabled();
                } );
 
-               if ( queue_.size() >= kQueueSize )
+               if ( queue_.size() >= IQueue<Value>::MaxSize() )
                {
                     return State::QueueFull;
                }
@@ -139,9 +146,8 @@ private:
 
 private:
      std::queue<Value> queue_;
-     const static unsigned int kQueueSize = 100;
 
-     std::mutex mtx;
+     mutable std::mutex mtx;
      std::condition_variable pop_cv_;
      std::condition_variable push_cv_;
 

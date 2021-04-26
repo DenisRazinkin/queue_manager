@@ -1,9 +1,9 @@
 #pragma once
 
-#ifndef MQP_QUEUE_MANAGER_H_
-#define MQP_QUEUE_MANAGER_H_
+#ifndef MQP_MULTI_QUEUE_MANAGER_H_
+#define MQP_MULTI_QUEUE_MANAGER_H_
 
-#include "base_queue_manager.cpp"
+#include "base_mqueue_manager.cpp"
 
 #include <mutex>
 
@@ -12,22 +12,22 @@
 namespace qm
 {
 
-//template<typename Key, typename Value, typename ProduceConsumeModel, typename ThreadModel >
+
 template< typename Key, typename Value >
-class IQueueManager
+class IMultiQueueManager
 {
 public:
      using Producers = boost::container::flat_multimap< Key, ProducerPtr< Key, Value > >;
      using Consumers = boost::container::flat_multimap< Key, ConsumerPtr< Key, Value > >;
      using Queues = boost::container::flat_map< Key, QueuePtr< Value > >;
 
-     explicit IQueueManager() = default;
+     explicit IMultiQueueManager() = default;
 
-     virtual ~IQueueManager() = default;
+     virtual ~IMultiQueueManager() = default;
 
      // forbid copying
-     IQueueManager( const IQueueManager & ) = delete;
-     IQueueManager & operator =( const IQueueManager & ) = delete;
+     IMultiQueueManager(const IMultiQueueManager & ) = delete;
+     IMultiQueueManager & operator =(const IMultiQueueManager & ) = delete;
 
 public:
      virtual State Subscribe( ConsumerPtr< Key, Value > consumer, Key id ) = 0;
@@ -39,10 +39,10 @@ public:
 public:
      State AddQueue( Key id, QueuePtr< Value > queue )
      {
-          std::scoped_lock lock( IQueueManager< Key, Value >::mtx_ );
-          if ( IQueueManager< Key, Value >::queues_.find( id ) == IQueueManager< Key, Value >::queues_.end() )
+          std::scoped_lock lock(IMultiQueueManager< Key, Value >::mtx_ );
+          if (IMultiQueueManager< Key, Value >::queues_.find(id ) == IMultiQueueManager< Key, Value >::queues_.end() )
           {
-               IQueueManager< Key, Value >::queues_.emplace( id, queue );
+               IMultiQueueManager< Key, Value >::queues_.emplace(id, queue );
                return State::Ok;
           }
 
@@ -51,12 +51,12 @@ public:
 
      State RemoveQueue( Key id )
      {
-          std::scoped_lock lock( IQueueManager< Key, Value >::mtx_ );
-          auto it = IQueueManager< Key, Value >::queues_.find( id );
-          if ( it != IQueueManager< Key, Value >::queues_.end() )
+          std::scoped_lock lock(IMultiQueueManager< Key, Value >::mtx_ );
+          auto it = IMultiQueueManager< Key, Value >::queues_.find(id );
+          if (it != IMultiQueueManager< Key, Value >::queues_.end() )
           {
                it->second->Enabled( false );
-               IQueueManager< Key, Value >::queues_.erase( it );
+               IMultiQueueManager< Key, Value >::queues_.erase(it );
           }
           else
           {
@@ -70,24 +70,24 @@ public:
 
      QueueResult<Value> GetQueue( Key id ) const
      {
-          std::scoped_lock lock( IQueueManager< Key, Value >::mtx_ );
-          auto it = IQueueManager< Key, Value >::queues_.find( id );
-          return it == IQueueManager< Key, Value >::queues_.end() ? QueueResult<Value>{ nullptr, State::QueueAbsent } :
+          std::scoped_lock lock(IMultiQueueManager< Key, Value >::mtx_ );
+          auto it = IMultiQueueManager< Key, Value >::queues_.find(id );
+          return it == IMultiQueueManager< Key, Value >::queues_.end() ? QueueResult<Value>{nullptr, State::QueueAbsent } :
                  QueueResult<Value>{ it->second, State::Ok };
      }
 
      bool AreAllQueuesEmpty() const
      {
-          std::scoped_lock lock( IQueueManager< Key, Value >::mtx_ );
-          return std::all_of( IQueueManager< Key, Value >::queues_.begin(), IQueueManager< Key, Value >::queues_.end(),
-                              [] ( const auto& queue ) { return queue.second && queue.second->Empty(); } );
+          std::scoped_lock lock(IMultiQueueManager< Key, Value >::mtx_ );
+          return std::all_of(IMultiQueueManager< Key, Value >::queues_.begin(), IMultiQueueManager< Key, Value >::queues_.end(),
+                             [] ( const auto& queue ) { return queue.second && queue.second->Empty(); } );
      }
 
      bool AreAllProducersDone() const
      {
-          std::scoped_lock lock( IQueueManager< Key, Value >::mtx_ );
-          return std::all_of( IQueueManager< Key, Value >::producers_.begin(), IQueueManager< Key, Value >::producers_.end(),
-                              [] ( const auto& producer ) { return producer.second && producer.second->Done(); } );
+          std::scoped_lock lock(IMultiQueueManager< Key, Value >::mtx_ );
+          return std::all_of(IMultiQueueManager< Key, Value >::producers_.begin(), IMultiQueueManager< Key, Value >::producers_.end(),
+                             [] ( const auto& producer ) { return producer.second && producer.second->Done(); } );
      }
 
      virtual State RegisterProducer( ProducerPtr< Key, Value > producer, Key id )

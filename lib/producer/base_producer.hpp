@@ -24,7 +24,7 @@ public:
 
      inline bool Done() const { return done_; }
 
-     /*State Register( Key id, IQueueManager<Key, Value> *manager )
+     /*State Register( Key id, IMultiQueueManager<Key, Value> *manager )
      {
           std::scoped_lock lock_guard( mtx );
           if ( manager == nullptr )
@@ -62,7 +62,7 @@ private:
           queue_ = queue;
      }
 
-     friend class IQueueManager< Key, Value >;
+     friend class IMultiQueueManager< Key, Value >;
 
 };
 

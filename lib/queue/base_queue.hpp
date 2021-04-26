@@ -3,78 +3,80 @@
 #ifndef MQP_BASE_IQUEUE_H_
 #define MQP_BASE_IQUEUE_H_
 
+#include <atomic>
+
 #include <boost/optional.hpp>
+
+#include "queue_state.hpp"
 
 namespace qm
 {
 
-enum class State
-{
-     Ok,
-     QueueFull,
-     QueueEmpty,
-     QueueBusy,
-     QueueAbsent,
-     QueueDisabled
-};
-
-std::string StateStr( State s )
-{
-     switch ( s )
-     {
-          case State::QueueFull:
-               return "queue is full";
-          case State::QueueEmpty:
-               return "queue is empty";
-          case State::QueueBusy:
-               return "queue is busy";
-          case State::QueueAbsent:
-               return "queue is absent";
-
-          default:
-               return "unknown state";
-     }
-}
-
+/// @brief General base template class for queue processing
+/// @tparam Value - type for queue store
 template<typename Value>
 class IQueue
 {
 public:
-     explicit IQueue( std::size_t size ) : size_( size ), enabled_( true ){};
-     virtual ~IQueue() { Stop(); };
+     explicit IQueue( std::size_t size );
+     virtual ~IQueue();
 
-
+     /// @brief copy constructor is disabled
      IQueue( const IQueue & ) = delete;
 
+     /// @brief copy operator is disabled
      IQueue &operator=( const IQueue & ) = delete;
 
-     virtual void Stop() { Enabled( false ); };
+     /// @brief Stop queue handling
+     virtual void Stop();
 
-     inline bool Enabled() const { return enabled_.load(); }
-     inline void Enabled( bool enabled ) { enabled_.store( enabled ); }
+     /// @brief Is queue enabled
+     /// @return true/false
+     [[nodiscard]] inline bool Enabled() const;
 
-     //virtual Value PopWait() = 0;
+     /// @brief Set is queue enabled
+     /// @param enabled - true/false
+     inline void Enabled( bool enabled );
+
+     /// @brief - queue maximal size
+     /// @return - size_t
+     [[nodiscard]] std::size_t MaxSize() const;
+
+public:
+     /// @brief Try pop value from queue
+     /// @return Value if pop successful, boost::none otherwise
      virtual std::optional<Value> Pop() = 0;
 
-     /// Blocking push
+     /// @brief Push to the queue ( may block )
+     /// @param obj - lvalue const object to push
+     /// @return - State value
      virtual State Push( const Value &obj ) = 0;
+
+     /// @brief Push to the queue ( may block )
+     /// @param obj - rvalue object to push
+     /// @return - State value
      virtual State Push( Value&& obj ) = 0;
 
-     /// Nonblocking push
+     /// @brief Nonblocking push to the queue
+     /// @param obj - lvalue const object to push
+     /// @return - State value
      virtual State TryPush( const Value &obj ) = 0;
+
+     /// @brief Nonblocking push to the queue
+     /// @param obj - rvalue object to push
+     /// @return - State value
      virtual State TryPush( Value&& obj ) = 0;
 
-     virtual bool Empty() const = 0;
-     //virtual boost::optional<Value> TryPop() = 0;
-     //virtual bool TryPush( Value&& obj ) = 0;
+     /// @brief Is queue empty
+     /// @return true/false
+     [[nodiscard]] virtual bool Empty() const = 0;
+
 private:
      std::size_t size_;
      std::atomic<bool> enabled_;
-     //< typename Queue >
-          //std::enable_if< std::is_base_of< Queue, IQueue < Value > >::value>, Value >
-     //const auto MakeQueuePtr = std::make_shared< Queue >;
 };
 
+/// @brief Alias name for shared pointer to queue
 template<typename Value>
 using QueuePtr = std::shared_ptr< IQueue< Value > >;
 
@@ -84,8 +86,40 @@ struct QueueResult
      QueuePtr< Value > queue_;
      State s_;
 };
-//static_assert( std::is_base_of< Queue, IQueue>::Value, "Not derived";
 
-} // qm
+template<typename Value>
+IQueue<Value>::IQueue(std::size_t size) : size_( size ), enabled_( true ) {}
 
-#endif // MQP_IQUEUE_H_
+template<typename Value>
+IQueue<Value>::~IQueue()
+{
+     enabled_ = false;
+}
+
+template<typename Value>
+void IQueue<Value>::Stop()
+{
+     Enabled( false );
+}
+
+template<typename Value>
+void IQueue<Value>::Enabled(bool enabled)
+{
+     enabled_.store( enabled );
+}
+
+template<typename Value>
+bool IQueue<Value>::Enabled() const
+{
+     return enabled_.load();
+}
+
+template<typename Value>
+std::size_t IQueue<Value>::MaxSize() const
+{
+     return size_;
+}
+
+} // namespace qm
+
+#endif // MQP_BASE_IQUEUE_H_

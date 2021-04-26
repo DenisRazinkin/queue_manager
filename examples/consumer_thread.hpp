@@ -8,7 +8,7 @@
 #include <common.h>
 #include <consumer/base_consumer.hpp>
 #include <queue/block_concurrent_queue.hpp>
-#include <manager/base_queue_manager.hpp>
+#include <manager/base_mqueue_manager.hpp>
 
 namespace qm
 {

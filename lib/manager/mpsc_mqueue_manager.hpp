@@ -12,17 +12,17 @@
 
 #include "queue/base_queue.hpp"
 #include "consumer/base_consumer.hpp"
-#include "manager/base_queue_manager.hpp"
+#include "manager/base_mqueue_manager.hpp"
 
 namespace qm
 {
 
-//template< typename Key, typename Value, template< Key, typename > class KVStore >
+// Последоваттельный обработчик очередей. Используется, когда необходимо, чтобы у каждой очереди был свой логический поток,
+// отвечающий за ее обработку, и значения в каждой очереди обрабатывались строго последовательно.
 template< typename Key, typename Value >
-class MPSCQueueManager : public IQueueManager< Key, Value >
+class MPSCQueueManager : public IMultiQueueManager< Key, Value >
 {
 public:
-
 
      explicit MPSCQueueManager()
           :  is_enabled_ ( true ) {};
@@ -34,16 +34,13 @@ public:
           //consumer_threads_.join_all();
      };
 
-
-
-
      void StopProcessing()
      {
           std::cout << "stop processing..\n";
           is_enabled_ = false;
-          std::for_each( IQueueManager< Key, Value >::queues_.begin(), IQueueManager< Key, Value >::queues_.end(), [] ( auto queue ) { queue.second->Stop(); } );
-          std::for_each( IQueueManager< Key, Value >::consumers_.begin(), IQueueManager< Key, Value >::consumers_.end(), [] ( auto consumer ) { consumer.second->Enabled( false ); } );
-          std::for_each( IQueueManager< Key, Value >::producers_.begin(), IQueueManager< Key, Value >::producers_.end(), [] ( auto producer ) { producer.second->Enabled( false ); } );
+          std::for_each(IMultiQueueManager< Key, Value >::queues_.begin(), IMultiQueueManager< Key, Value >::queues_.end(), [] (auto queue ) { queue.second->Stop(); } );
+          std::for_each(IMultiQueueManager< Key, Value >::consumers_.begin(), IMultiQueueManager< Key, Value >::consumers_.end(), [] (auto consumer ) { consumer.second->Enabled(false ); } );
+          std::for_each(IMultiQueueManager< Key, Value >::producers_.begin(), IMultiQueueManager< Key, Value >::producers_.end(), [] (auto producer ) { producer.second->Enabled(false ); } );
 
           for ( auto & thread : consumer_threads_ )
           {
@@ -68,19 +65,19 @@ public:
           //auto new_subscriber = Consumers::value_type( id, consumer );
           //std::cout << id << " subscribe.. \n";
 
-          std::scoped_lock lock( IQueueManager< Key, Value >::mtx_ );
-          if (  IQueueManager< Key, Value >::consumers_.find( id ) != IQueueManager< Key, Value >::consumers_.end() )
+          std::scoped_lock lock(IMultiQueueManager< Key, Value >::mtx_ );
+          if (IMultiQueueManager< Key, Value >::consumers_.find(id ) != IMultiQueueManager< Key, Value >::consumers_.end() )
           {
                return State::QueueBusy;
           }
 
-          auto queue_it = IQueueManager< Key, Value >::queues_.find( id );
-          if ( queue_it == IQueueManager< Key, Value >::queues_.end() )
+          auto queue_it = IMultiQueueManager< Key, Value >::queues_.find(id );
+          if (queue_it == IMultiQueueManager< Key, Value >::queues_.end() )
           {
                return State::QueueAbsent;
           }
 
-          IQueueManager< Key, Value >::consumers_.emplace( id, consumer );
+          IMultiQueueManager< Key, Value >::consumers_.emplace(id, consumer );
 
           auto queue = queue_it->second;
           consumer_threads_.emplace( id, std::thread([ this, id, queue, consumer ]()
@@ -107,9 +104,9 @@ public:
 
      virtual State Unsubscribe( Key id ) override
      {
-          std::scoped_lock lock( IQueueManager< Key, Value >::mtx_ );
-          auto consumer = IQueueManager< Key, Value >::consumers_.find( id );
-          if ( consumer != IQueueManager< Key, Value >::consumers_.end() )
+          std::scoped_lock lock(IMultiQueueManager< Key, Value >::mtx_ );
+          auto consumer = IMultiQueueManager< Key, Value >::consumers_.find(id );
+          if (consumer != IMultiQueueManager< Key, Value >::consumers_.end() )
           {
                //consumer->Unsubscribe()->Stop();
                consumer->second->Enabled( false );
@@ -120,7 +117,7 @@ public:
                     thread->second.join();
                }
 
-               IQueueManager< Key, Value >::consumers_.erase( id );
+               IMultiQueueManager< Key, Value >::consumers_.erase(id );
                return State::Ok;
           }
 
@@ -138,9 +135,9 @@ private:
      template< typename K, typename V >
      State EnqueueFwd( K&& id, V&& value )
      {
-          std::lock_guard<std::recursive_mutex> lock( IQueueManager< Key, Value >::mtx_ );
-          auto queue = IQueueManager< Key, Value >::queues_.find( std::forward< K >( id ) );
-          if ( queue != IQueueManager< Key, Value >::queues_.end() )
+          std::lock_guard<std::recursive_mutex> lock(IMultiQueueManager< Key, Value >::mtx_ );
+          auto queue = IMultiQueueManager< Key, Value >::queues_.find(std::forward< K >(id ) );
+          if (queue != IMultiQueueManager< Key, Value >::queues_.end() )
           {
                return queue->second->TryPush( std::forward< V >( value ) );
           }

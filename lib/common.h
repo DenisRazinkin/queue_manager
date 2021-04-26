@@ -22,10 +22,10 @@ template<typename Key, typename Value>
 using ProducerPtr = std::shared_ptr< IProducer< Key, Value > >;
 
 template<typename Key, typename Value >
-class IQueueManager;
+class IMultiQueueManager;
 
 template<typename Key, typename Value >
-using ManagerPtr = std::shared_ptr< IQueueManager< Key, Value > >;
+using ManagerPtr = std::shared_ptr< IMultiQueueManager< Key, Value > >;
 
 template < typename  T > using Ptr = std::shared_ptr< T >;
 template < typename  T, typename... Args >

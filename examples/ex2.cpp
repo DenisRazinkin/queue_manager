@@ -2,7 +2,7 @@
 
 #include <queue/block_concurrent_queue.hpp>
 #include <queue/lock_free_queue.hpp>
-#include <manager/mpsc_queue_manager.hpp>
+#include <manager/mpsc_mqueue_manager.hpp>
 #include <producer/base_producer.hpp>
 
 #include "consumer_thread.hpp"
