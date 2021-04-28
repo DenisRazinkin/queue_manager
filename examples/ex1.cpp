@@ -22,13 +22,13 @@ void ConcurrentQeueuWithProducerRegistration( int loops )
      for ( std::size_t i = 0; i < workers; i++ )
      {
           auto producer = std::make_shared<qm::SimpleLoopProducerThread<std::string, int> >( std::to_string( i ), loops );
-          if ( mpsc_manager.RegisterProducer( producer, std::to_string( i ) ) == qm::State::Ok )
+          if ( mpsc_manager.RegisterProducer( std::to_string( i ), producer ) == qm::State::Ok )
           {
                producer->Produce();
           }
 
           auto producer2 = std::make_shared<qm::SimpleLoopProducerThread<std::string, int> >( std::to_string( i ), loops );
-          if ( mpsc_manager.RegisterProducer( producer2, std::to_string( i ) ) == qm::State::Ok )
+          if ( mpsc_manager.RegisterProducer( std::to_string( i ), producer2 ) == qm::State::Ok )
           {
                producer2->Produce();
           }
@@ -36,8 +36,8 @@ void ConcurrentQeueuWithProducerRegistration( int loops )
 
      for ( std::size_t i = 0; i < workers; i++ )
      {
-          auto consumer = std::make_shared< qm::QueueConsumerThreadWorker< std::string, int > > ();
-          mpsc_manager.Subscribe( consumer, std::to_string( i ) );
+          auto consumer = std::make_shared< qm::QueueConsumerThreadWorker< int > > ();
+          mpsc_manager.Subscribe( std::to_string( i ), consumer );
 
           /*auto consumer2 = qm::QueueConsumerThreadWorker< std::string, int >::Make();
           mpsc_manager.Subscribe( consumer2, std::to_string( i ) );

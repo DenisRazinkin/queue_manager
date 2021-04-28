@@ -17,142 +17,131 @@
 namespace qm
 {
 
-// Последоваттельный обработчик очередей. Используется, когда необходимо, чтобы у каждой очереди был свой логический поток,
-// отвечающий за ее обработку, и значения в каждой очереди обрабатывались строго последовательно.
-template< typename Key, typename Value >
+/// @brief SMulti producer single consumer queue manager.
+/// Used when required to create consumer thread for each queue and important that values will proceed consistently.
+/// @tparam Key Type for queues map store. Key must be comparable by operator<
+/// @tparam Value Type for queue store
+template<typename Key, typename Value>
 class MPSCQueueManager : public IMultiQueueManager< Key, Value >
 {
 public:
+     /// @brief multi producer single consumer manager constructor
+     explicit MPSCQueueManager() = default;
 
-     explicit MPSCQueueManager()
-          :  is_enabled_ ( true ) {};
+     /// @brief destructor
+     virtual ~MPSCQueueManager();
 
-     virtual ~MPSCQueueManager()
+     /// @brief Subscribe consumer from queue
+     /// Starts new thread with
+     /// @param id
+     /// @param consumer
+     /// @return
+     State Subscribe( Key id, ConsumerPtr< Value > consumer ) override;
+
+     /// @brief Unsubscribe consumer from queue
+     /// @param id Key to find queue
+     /// @return State value
+     /// @attention Unsubscribe from blocking queue may lead to producers threads locks waiting for free space.
+     /// If queue is not needed anymore, should use RemoveQueue method from base class.
+     State Unsubscribe( Key id ) override;
+
+     /// @brief Unsubscribe consumer from queue. Behaviour equal to function without consumer arg.
+     /// @param id Key to find queue
+     /// @param consumer Consumer ptr is ignored.
+     /// @return State value
+     /// @attention Unsubscribe from blocking queue may lead to producers threads locks waiting for free space.
+     /// If queue is not needed anymore, should use RemoveQueue method from base class.
+     State Unsubscribe( Key id, ConsumerPtr < Value> consumer ) override;
+
+protected:
+     bool ProducerRegistrationAllowed( Key ) const override;
+
+private:
+     boost::container::flat_map< Key, std::thread > consumer_threads_;
+};
+
+template<typename Key, typename Value>
+MPSCQueueManager< Key, Value >::~MPSCQueueManager()
+{
+     IMultiQueueManager< Key, Value >::StopProcessing();
+     for ( auto &thread : consumer_threads_ )
      {
-          StopProcessing();
-          //producer_threads_.join_all();
-          //consumer_threads_.join_all();
-     };
+          thread.second.join();
+     }
+}
 
-     void StopProcessing()
+template<typename Key, typename Value>
+State MPSCQueueManager< Key, Value >::Subscribe( Key id, ConsumerPtr< Value > consumer )
+{
+     std::scoped_lock lock( IMultiQueueManager< Key, Value >::mtx_ );
+     if ( IMultiQueueManager< Key, Value >::consumers_.find( id ) !=
+          IMultiQueueManager< Key, Value >::consumers_.end() )
      {
-          std::cout << "stop processing..\n";
-          is_enabled_ = false;
-          std::for_each(IMultiQueueManager< Key, Value >::queues_.begin(), IMultiQueueManager< Key, Value >::queues_.end(), [] (auto queue ) { queue.second->Stop(); } );
-          std::for_each(IMultiQueueManager< Key, Value >::consumers_.begin(), IMultiQueueManager< Key, Value >::consumers_.end(), [] (auto consumer ) { consumer.second->Enabled(false ); } );
-          std::for_each(IMultiQueueManager< Key, Value >::producers_.begin(), IMultiQueueManager< Key, Value >::producers_.end(), [] (auto producer ) { producer.second->Enabled(false ); } );
-
-          for ( auto & thread : consumer_threads_ )
-          {
-               thread.second.join();
-          }
-          //std::for_each( consumer_threads_.begin(), consumer_threads_.end(), [] ( auto thread ) { thread.second.join(); } );
-
+          return State::QueueBusy;
      }
 
-     State Enqueue( Key &&id, Value &&value ) override
+     auto queue_it = IMultiQueueManager< Key, Value >::queues_.find( id );
+     if ( queue_it == IMultiQueueManager< Key, Value >::queues_.end())
      {
-          return EnqueueFwd( std::move( id ), std::move( value ) );
+          return State::QueueAbsent;
      }
 
-     State Enqueue( const Key &id, const Value &value ) override
+     IMultiQueueManager< Key, Value >::consumers_.emplace( id, consumer );
+
+     auto queue = queue_it->second;
+     auto thread_lambda = [ this, id, queue, consumer ]()
      {
-          return EnqueueFwd( id, value );
-     }
-
-     virtual State Subscribe( ConsumerPtr<Key, Value> consumer, Key id ) override
-     {
-          //auto new_subscriber = Consumers::value_type( id, consumer );
-          //std::cout << id << " subscribe.. \n";
-
-          std::scoped_lock lock(IMultiQueueManager< Key, Value >::mtx_ );
-          if (IMultiQueueManager< Key, Value >::consumers_.find(id ) != IMultiQueueManager< Key, Value >::consumers_.end() )
+          while ( ( consumer->Enabled() && IMultiQueueManager< Key, Value >::is_enabled_ && queue->Enabled()) ||
+                    !queue->Empty() )
           {
-               return State::QueueBusy;
-          }
-
-          auto queue_it = IMultiQueueManager< Key, Value >::queues_.find(id );
-          if (queue_it == IMultiQueueManager< Key, Value >::queues_.end() )
-          {
-               return State::QueueAbsent;
-          }
-
-          IMultiQueueManager< Key, Value >::consumers_.emplace(id, consumer );
-
-          auto queue = queue_it->second;
-          consumer_threads_.emplace( id, std::thread([ this, id, queue, consumer ]()
-          {
-               std::cout << "consumer " << std::hex << std::this_thread::get_id() << std::dec << " consumer enabled_ " << consumer->Enabled() << " queue->Empty():" << queue->Empty() << std::endl;
-               //std::cout << "manager enabled_ " << is_enabled_ << " queue enabled_ " <<queue->Enabled()  << std::endl;
-               while ( ( consumer->Enabled() && is_enabled_ && queue->Enabled() ) || !queue->Empty() ) {
-                    //std::cout << id << " thread \n";
-                    //std::cout << "consumer " << std::this_thread::get_id() << " consumer enabled_ " << consumer->Enabled() << " queue->Empty():" << queue->Empty() << std::endl;
-                    auto value = queue->Pop();
-
-                    if ( value.has_value() )
-                    {
-                         consumer->Consume( id, value.value() );
-                    }
+               auto value = queue->Pop();
+               if ( value.has_value())
+               {
+                    consumer->Consume( value.value());
                }
-               //std::cout << "consumer " << std::this_thread::get_id() << " consumer enabled_ " << consumer->Enabled() << " queue->Empty():" << queue->Empty() << std::endl;
-               //std::cout << "manager enabled_ " << is_enabled_ << " queue enabled_ " <<queue->Enabled()  << std::endl;
-          } ) );
+          }
+     };
+     consumer_threads_.emplace( id, std::thread( thread_lambda ) );
 
-          //consumer->Subscribe( queue )->Run();
+     return State::Ok;
+}
+
+template<typename Key, typename Value>
+bool MPSCQueueManager< Key, Value >::ProducerRegistrationAllowed( Key ) const
+{
+     // the registration is always enabled for multi producers manager
+     return true;
+}
+
+template<typename Key, typename Value>
+State MPSCQueueManager< Key, Value >::Unsubscribe( Key id )
+{
+     std::scoped_lock lock( IMultiQueueManager< Key, Value >::mtx_ );
+     auto consumer = IMultiQueueManager< Key, Value >::consumers_.find( id );
+     if ( consumer != IMultiQueueManager< Key, Value >::consumers_.end())
+     {
+          consumer->second->Enabled( false );
+
+          auto thread = consumer_threads_.find( id );
+          if ( thread != consumer_threads_.end())
+          {
+               thread->second.join();
+          }
+
+          IMultiQueueManager< Key, Value >::consumers_.erase( id );
           return State::Ok;
      }
 
-     virtual State Unsubscribe( Key id ) override
-     {
-          std::scoped_lock lock(IMultiQueueManager< Key, Value >::mtx_ );
-          auto consumer = IMultiQueueManager< Key, Value >::consumers_.find(id );
-          if (consumer != IMultiQueueManager< Key, Value >::consumers_.end() )
-          {
-               //consumer->Unsubscribe()->Stop();
-               consumer->second->Enabled( false );
+     return State::QueueAbsent;
+}
 
-               auto thread = consumer_threads_.find( id );
-               if ( thread != consumer_threads_.end() )
-               {
-                    thread->second.join();
-               }
+template<typename Key, typename Value>
+State MPSCQueueManager< Key, Value >::Unsubscribe( Key id, ConsumerPtr< Value > )
+{
+     return Unsubscribe( id );
+}
 
-               IMultiQueueManager< Key, Value >::consumers_.erase(id );
-               return State::Ok;
-          }
 
-          return State::QueueAbsent;
-     }
-
-protected:
-     bool ProducerRegistrationAllowed( Key id ) const override
-     {
-          // for multi producers manager registration has always enabled
-          return true;
-     }
-
-private:
-     template< typename K, typename V >
-     State EnqueueFwd( K&& id, V&& value )
-     {
-          std::lock_guard<std::recursive_mutex> lock(IMultiQueueManager< Key, Value >::mtx_ );
-          auto queue = IMultiQueueManager< Key, Value >::queues_.find(std::forward< K >(id ) );
-          if (queue != IMultiQueueManager< Key, Value >::queues_.end() )
-          {
-               return queue->second->TryPush( std::forward< V >( value ) );
-          }
-
-          return State::QueueAbsent;
-     }
-
-private:
-     std::atomic<bool> is_enabled_;
-
-     //std::map<Key, std::thread> consumers_threads_:
-     //std::map<Key, std::thread> producer_threads_;
-
-     boost::container::flat_map<Key, std::thread> consumer_threads_;
-};
 
 } // namespace qm
 

@@ -1,3 +1,5 @@
+/// @brief Lock free queue for multi producers multi consumers model.
+/// @author Denis Razinkin
 #pragma once
 
 #ifndef MQP_LOCK_FREE_QUEUE_H_
@@ -10,53 +12,114 @@
 namespace qm
 {
 
-template<typename Value>
-class LockFreeQueue : public IQueue<Value>
+/// @brief Lock free queue for multi producers multi consumers model.
+/// @tparam Value Type for queue store
+template< typename Value >
+class LockFreeQueue : public IQueue< Value >
 {
 public:
-     explicit LockFreeQueue( std::size_t size ) : IQueue<Value>( size ), queue_( boost::lockfree::queue<Value>( size ) ) { };
+     /// @brief Constructor
+     /// @param size Maximal size of queue
+     explicit LockFreeQueue( std::size_t size );
 
-     void Stop()
-     {
-     }
+     /// @brief Destructor
+     ~LockFreeQueue() = default;
 
-     bool Empty() const { return queue_.empty(); };
+     /// @brief Disable queue and stop waiting for threads
+     /// Thread safe
+     void Stop();
 
-     std::optional<Value> Pop()
-     {
-          Value value;
-          if ( queue_.pop( value ) )
-          {
-               return value;
-          }
+     /// @brief Check is queue empty.
+     /// Thread safe.
+     /// @return true/false
+     [[nodiscard]] bool Empty() const;
 
-          return std::nullopt;
-     };
+     /// @brief Lock free pop from queue.
+     /// Thread safe.
+     /// @return Object empty value if pop unsuccessfully
+     std::optional< Value > Pop();
 
-     State Push( const Value &obj )
-     {
-          return queue_.push( obj ) ? State::Ok : State::QueueFull;
-     }
+     /// @brief Lock free push.
+     /// Thread safe
+     /// @param obj Lvalue object to push
+     /// @return State::Ok or other state of queue on error
+     State Push( const Value &obj );
 
-     /// Push
-     State Push( Value &&obj )
-     {
-          return queue_.push( std::move( obj ) ) ? State::Ok : State::QueueFull;
-     }
+     /// @brief Lock free push.
+     /// Thread safe
+     /// @param obj Rvalue object to push
+     /// @return State::Ok or other state of queue on error
+     State Push( Value &&obj );
 
-     State TryPush( const Value &obj )
-     {
-          return queue_.bounded_push( obj ) ? State::Ok : State::QueueFull;
-     }
+     /// @brief Lock free push. Method similar to Push(const &)
+     /// Thread safe
+     /// @param obj Lvalue object to push
+     /// @return State::Ok or other state of queue on error
+     State TryPush( const Value &obj );
 
-     State TryPush( Value &&obj )
-     {
-          return queue_.bounded_push( std::move( obj ) ) ? State::Ok : State::QueueFull;
-     }
+     /// @brief Lock free push. Method similar to Push(&&)
+     /// Thread safe
+     /// @param obj Rvalue object to push
+     /// @return State::Ok or other state of queue on error
+     State TryPush( Value &&obj );
+
 private:
-     boost::lockfree::queue<Value> queue_;
+     boost::lockfree::queue< Value > queue_;
 
 };
+
+template< typename Value >
+void LockFreeQueue< Value >::Stop()
+{
+     // Queue is nonblocking, nothing to do here
+}
+
+template< typename Value >
+LockFreeQueue< Value >::LockFreeQueue( std::size_t size ) : IQueue< Value >( size ),
+                                                            queue_( boost::lockfree::queue< Value >( size ))
+{}
+
+template< typename Value >
+bool LockFreeQueue< Value >::Empty() const
+{
+     return queue_.empty();
+}
+
+template< typename Value >
+std::optional< Value > LockFreeQueue< Value >::Pop()
+{
+     Value value;
+     if ( queue_.pop( value ))
+     {
+          return value;
+     }
+
+     return std::nullopt;
+}
+
+template< typename Value >
+State LockFreeQueue< Value >::Push( const Value &obj )
+{
+     return queue_.bounded_push( obj ) ? State::Ok : State::QueueFull;
+}
+
+template< typename Value >
+State LockFreeQueue< Value >::Push( Value &&obj )
+{
+     return queue_.bounded_push( std::move( obj )) ? State::Ok : State::QueueFull;
+}
+
+template< typename Value >
+State LockFreeQueue< Value >::TryPush( const Value &obj )
+{
+     return queue_.bounded_push( obj ) ? State::Ok : State::QueueFull;
+}
+
+template< typename Value >
+State LockFreeQueue< Value >::TryPush( Value &&obj )
+{
+     return queue_.bounded_push( std::move( obj )) ? State::Ok : State::QueueFull;
+}
 
 } // qm
 

@@ -15,34 +15,14 @@ namespace qm
 
 std::atomic<int> consumer_counter_;
 
-template<typename Key, typename Value>
-class QueueConsumerThreadWorker : public IConsumer<Key, Value>, public SharedFactory< QueueConsumerThreadWorker< Key, Value > >
+template< typename Value >
+class QueueConsumerThreadWorker : public IConsumer< Value >
 {
 public:
      QueueConsumerThreadWorker() {};
      ~QueueConsumerThreadWorker() {};
-     /*
-     void Run()
-     {
-          //TODO add mp exception type
-          if ( queue_ == nullptr ) throw std::runtime_error("Could not run consumer, queue is empty");
 
-          consumer_thread_ = std::thread( []()
-               {
-                    while (!done || !queue_->Empty() ) {
-                         auto value = queue_->Pop();
-
-                         if ( value.is_initialized() )
-                         {
-                              Consume( value.get() )
-                         }
-                    }
-               }
-          );
-
-     }*/
-
-     void Consume( const Key &key, const Value &obj )
+     void Consume( const Value &obj )
      {
           //std::string msg = "consumer queue: " + key + " value: " + std::to_string( obj ) + " \n";
           //std::cout << msg;
@@ -51,29 +31,6 @@ public:
           consumer_counter_++;
      };
 
-     /*
-     void Consume( )
-     {
-          while (!done || !q->Empty() ) {
-               auto value = q->Pop();
-
-               if ( value.is_initialized() )
-               {
-                    //std::string msg = "consumer: " + std::to_string( id ) + " value: " + std::to_string( value.get() ) + " \n";
-                    //std::cout << msg;
-                    ++consumer_count;
-               }
-          }
-     }*/
-
-     /*
-     virtual void Stop()
-     {
-          is_enabled_ = false;
-     }
-private:
-     std::atomic<bool> is_enabled_;
-     std::thread consumer_thread_;*/
 };
 
 

@@ -9,7 +9,6 @@
 namespace qm
 {
 
-
 std::atomic<int> counter_;
 
 template<typename Key, typename Value>
@@ -21,6 +20,11 @@ public:
 
      ~EnqueueProducerThread()
      { if( thread_.joinable()) thread_.join(); };
+
+     void WaitDone() override
+     {
+          thread_.join();
+     }
 
      void Produce()
      {
@@ -73,7 +77,12 @@ public:
 
      ~SimpleLoopProducerThread(){ if ( thread_.joinable() ) thread_.join(); };
 
-     void Produce()
+     void WaitDone() override
+     {
+          thread_.join();
+     }
+
+     void Produce() override
      {
           if ( IProducer<Key, Value>::queue_ == nullptr )
           {

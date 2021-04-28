@@ -39,13 +39,10 @@ void producer(qm::IMultiQueueManager<std::string, int> *manager, int id, const s
           //std::cout << "queue " << q << " enabled: " << q->Enabled() << " push value " << value << std::endl;
           while ( produce.load() && ( state = manager->Enqueue( key, producer_count ) ) != qm::State::Ok )
           {
-
                if ( state == qm::State::QueueDisabled )
                {
                     break;
                }
-
-               continue;
           }
      }
 }
@@ -92,7 +89,6 @@ void consumer(qm::IQueue<int> *q, int id)
 void test1()
 {
      qm::BlockConcurrentQueue<int> queue1( 100 );
-
      boost::thread_group producer_threads, consumer_threads;
 
      auto time = boost::posix_time::microsec_clock::local_time();
@@ -173,16 +169,16 @@ void test3()
      }
 
 
-     qm::ConsumerPtr<std::string, int> consumer1 = std::make_shared<qm::QueueConsumerThreadWorker<std::string, int>>();
-     auto sub_result = mpsc_manager.Subscribe( consumer1, "first" );
+     auto consumer1 = std::make_shared<qm::QueueConsumerThreadWorker< int>>();
+     auto sub_result = mpsc_manager.Subscribe( "first", consumer1 );
      if ( sub_result != qm::State::Ok )
      {
           std::cout << "Failed to subscribe: " << qm::StateStr( sub_result ) << std::endl;
           return;
      }
 
-     auto consumer2 = std::make_shared<qm::QueueConsumerThreadWorker<std::string, int>>();
-     sub_result = mpsc_manager.Subscribe( consumer2, "second" );
+     auto consumer2 = std::make_shared<qm::QueueConsumerThreadWorker< int>>();
+     sub_result = mpsc_manager.Subscribe( "second", consumer2 );
      if ( sub_result != qm::State::Ok )
      {
           std::cout << "Failed to subscribe: " << qm::StateStr( sub_result ) << std::endl;
@@ -242,32 +238,32 @@ void test4()
 
 
 
-     qm::ConsumerPtr<std::string, int> consumer1 = std::make_shared<qm::QueueConsumerThreadWorker<std::string, int>>();
-     auto sub_result = mpsc_manager.Subscribe( consumer1, "first" );
+     auto consumer1 = std::make_shared<qm::QueueConsumerThreadWorker< int > >();
+     auto sub_result = mpsc_manager.Subscribe( "first", consumer1 );
      if ( sub_result != qm::State::Ok )
      {
           std::cout << "Failed to subscribe: " << qm::StateStr( sub_result ) << std::endl;
           return;
      }
 
-     auto consumer2 = std::make_shared<qm::QueueConsumerThreadWorker<std::string, int>>();
-     sub_result = mpsc_manager.Subscribe( consumer2, "second" );
+     auto consumer2 = std::make_shared<qm::QueueConsumerThreadWorker< int>>();
+     sub_result = mpsc_manager.Subscribe( "second", consumer2 );
      if ( sub_result != qm::State::Ok )
      {
           std::cout << "Failed to subscribe: " << qm::StateStr( sub_result ) << std::endl;
           return;
      }
 
-     auto consumer3 = std::make_shared<qm::QueueConsumerThreadWorker<std::string, int>>();
-     sub_result = mpsc_manager.Subscribe( consumer3, "third" );
+     auto consumer3 = std::make_shared<qm::QueueConsumerThreadWorker< int>>();
+     sub_result = mpsc_manager.Subscribe( "third", consumer3 );
      if ( sub_result != qm::State::Ok )
      {
           std::cout << "Failed to subscribe: " << qm::StateStr( sub_result ) << std::endl;
           return;
      }
 
-     auto consumer4 = std::make_shared<qm::QueueConsumerThreadWorker<std::string, int>>();
-     sub_result = mpsc_manager.Subscribe( consumer4, "fourth" );
+     auto consumer4 = std::make_shared<qm::QueueConsumerThreadWorker< int>>();
+     sub_result = mpsc_manager.Subscribe( "fourth", consumer4 );
      if ( sub_result != qm::State::Ok )
      {
           std::cout << "Failed to subscribe: " << qm::StateStr( sub_result ) << std::endl;
@@ -317,14 +313,14 @@ void test5(int loops)
      {
           auto producer = std::make_shared<qm::SimpleLoopProducerThread<std::string, int> >( std::to_string( i ), loops );
 
-          if ( mpsc_manager.RegisterProducer( producer, std::to_string( i ) ) == qm::State::Ok )
+          if ( mpsc_manager.RegisterProducer( std::to_string( i ), producer ) == qm::State::Ok )
           {
                producer->Produce();
           }
 
           auto producer2 = std::make_shared<qm::SimpleLoopProducerThread<std::string, int> >( std::to_string( i ), loops );
 
-          if ( mpsc_manager.RegisterProducer( producer2, std::to_string( i ) ) == qm::State::Ok )
+          if ( mpsc_manager.RegisterProducer( std::to_string( i ), producer2 ) == qm::State::Ok )
           {
                producer2->Produce();
           }
@@ -332,9 +328,9 @@ void test5(int loops)
 
      for ( int i = 0; i < workers; i++ )
      {
-          auto consumer = std::make_shared< qm::QueueConsumerThreadWorker< std::string, int > > ();
+          auto consumer = std::make_shared< qm::QueueConsumerThreadWorker< int > > ();
           //mpsc_manager.Subscribe( std::make_shared<qm::QueueConsumerThreadWorker<std::string, int>>(), std::to_string( i ) );
-          mpsc_manager.Subscribe( consumer, std::to_string( i ) );
+          mpsc_manager.Subscribe( std::to_string( i ), consumer );
      }
 
 
@@ -382,7 +378,7 @@ void test6(int loops)
 
      for ( int i = 0; i < workers; i++ )
      {
-          mpsc_manager->Subscribe( std::make_shared<qm::QueueConsumerThreadWorker<std::string, int>>(), std::to_string( i ) );
+          mpsc_manager->Subscribe( std::to_string( i ), std::make_shared<qm::QueueConsumerThreadWorker< int>>() );
      }
 
      while (  ! std::all_of( producers.begin(), producers.end(),

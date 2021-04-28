@@ -33,7 +33,7 @@ void ConcurrentQeueuWithManagerEnqueue( int loops )
 
      for ( std::size_t i = 0; i < workers; i++ )
      {
-          mpsc_manager->Subscribe( std::make_shared<qm::QueueConsumerThreadWorker<std::string, int>>(), std::to_string( i ) );
+          mpsc_manager->Subscribe( std::to_string( i ), std::make_shared< qm::QueueConsumerThreadWorker< int > >() );
      }
 
      while (  ! std::all_of( producers.begin(), producers.end(),

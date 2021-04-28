@@ -1,60 +1,55 @@
+/// @brief Base template class for consume
+/// @author Denis Razinkin
 #pragma once
 
 #ifndef MQP_BASE_CONSUMER_H_
 #define MQP_BASE_CONSUMER_H_
 
 #include "common.h"
-//#include "base_queue_manager.h"
 
 #include <iostream>
 
 namespace qm
 {
 
-
-
-template<typename Key, typename Value>
+template< typename Value >
 class IConsumer
 {
 public:
+     /// @brief Constructor
      explicit IConsumer() = default;
+
+     /// @brief Destructor
      virtual ~IConsumer() = default;
 
-     inline bool Enabled() const { return enabled_.load(); }
-     inline void Enabled( bool enabled ) { enabled_.store( enabled ); }
+     /// @brief Is queue enabled
+     /// @return true/false
+     [[nodiscard]] inline bool Enabled() const;
 
-     //virtual void Run() = 0;
-
-     //virtual void Stop() = 0;
-     //{
-          //if ( queue_ == nullptr ) return QueueSubscriptionAbsent;
-          //return Consume();
-     //}
-
-     //virtual friend class IMultiQueueManager<Key, Value>;
-     //friend State QueueManager<Key, Value>::Subscribe( ConsumerPtr<Key, Value> consumer, Key id );
+     /// @brief Disable or enable queue
+     /// @param enabled True - enbaled, false - disabled
+     inline void Enabled( bool enabled );
 
 public:
-     virtual void Consume( const Key &key, const Value &obj ) = 0;
+     /// @brief Pure virtual func for object processing
+     /// @param obj Object
+     virtual void Consume( const Value &obj ) = 0;
+
 private:
-     std::atomic<bool> enabled_ = true;
-/*
-     ConsumerPtr<Key, Value> Subscribe( QueuePtr<Value> queue )
-     {
-          queue_ = queue;
-          return this;
-     }
-
-     ConsumerPtr<Key, Value> Unsubscribe()
-     {
-          queue_.reset();
-          return this;
-     }*/
-
-     Key id;
-     //QueuePtr<Value> queue_;
-
+     std::atomic< bool > enabled_ = true;
 };
+
+template< typename Value >
+bool IConsumer< Value >::Enabled() const
+{
+     return enabled_.load();
+}
+
+template<  typename Value >
+void IConsumer< Value >::Enabled( bool enabled )
+{
+     enabled_.store( enabled );
+}
 
 } // qm
 

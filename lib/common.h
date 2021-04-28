@@ -8,12 +8,11 @@
 namespace qm
 {
 
-// forward declaration for alias ConsumerPtr
-template<typename Key, typename Value>
+template< typename Value>
 class IConsumer;
 
-template<typename Key, typename Value>
-using ConsumerPtr = std::shared_ptr< IConsumer < Key, Value > >;
+template< typename Value>
+using ConsumerPtr = std::shared_ptr< IConsumer < Value > >;
 
 template<typename Key, typename Value>
 class IProducer;
@@ -33,24 +32,6 @@ Ptr<T> MakePtr( Args... args )
 {
      return std::make_shared< T >( args... );
 }
-
-// CRTP - curiously recurring template pattern
-template< typename T >
-struct SharedFactory
-{
-     using PointerType = std::shared_ptr< T >;
-
-     template< typename... Args >
-     static PointerType Make( Args&&... args )
-     {
-          return std::make_shared< T > ( std::forward< Args > ( args )... );
-     }
-
-     static PointerType Make()
-     {
-          return std::make_shared< T > ();
-     }
-};
 
 } // qm
 
