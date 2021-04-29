@@ -95,10 +95,8 @@ void MPSCQueueManager< Key, Value >::StopProcessing()
 template<typename Key, typename Value>
 void MPSCQueueManager< Key, Value >::StartProcessing()
 {
-     std::cout << "MPSCQueueManager< Key, Value >::StartProcessing()";
      if ( IMultiQueueManager< Key, Value >::is_enabled_ )
      {
-          std::cout << " IMultiQueueManager< Key, Value >::is_enabled_ == false \n";
           return;
 
      }
@@ -107,7 +105,6 @@ void MPSCQueueManager< Key, Value >::StartProcessing()
      std::for_each( IMultiQueueManager< Key, Value >::consumers_.begin(),
                     IMultiQueueManager< Key, Value >::consumers_.end(), [ this ]( auto consumer )
                     {
-                         std::cout << " enable consumer "<< consumer.first << ", start thread.. \n";
                          auto queue = IMultiQueueManager< Key, Value >::queues_.find( consumer.first );
                          if ( queue != IMultiQueueManager< Key, Value >::queues_.end() )
                          {
@@ -119,10 +116,8 @@ void MPSCQueueManager< Key, Value >::StartProcessing()
 template<typename Key, typename Value>
 State MPSCQueueManager< Key, Value >::StartConsumerThread( Key id, ConsumerPtr< Value > consumer, QueuePtr< Value > queue )
 {
-     std::cout << "start new thread " << std::this_thread::get_id() << std::endl;
      auto thread_lambda = [ this, id, queue, consumer ]()
      {
-          std::cout << "This thread " << std::this_thread::get_id() << std::endl;
           while ( ( consumer->Enabled() && IMultiQueueManager< Key, Value >::is_enabled_ && queue->Enabled() ) ||
                  !queue->Empty() )
           {
@@ -133,8 +128,6 @@ State MPSCQueueManager< Key, Value >::StartConsumerThread( Key id, ConsumerPtr< 
                }
           }
      };
-
-     std::cout << "emplace thread " << std::this_thread::get_id() << std::endl;
 
      consumer_threads_.emplace( id, std::thread( thread_lambda ) );
      return State::Ok;
@@ -150,15 +143,13 @@ State MPSCQueueManager< Key, Value >::Subscribe( Key id, ConsumerPtr< Value > co
           return State::QueueBusy;
      }
 
-     std::cout << "Subscribe to " << id << std::endl;
      auto queue_it = IMultiQueueManager< Key, Value >::queues_.find( id );
      if ( queue_it == IMultiQueueManager< Key, Value >::queues_.end() )
      {
           return State::QueueAbsent;
      }
-     std::cout << "emplace to " << id << std::endl;
+
      IMultiQueueManager< Key, Value >::consumers_.emplace( id, consumer );
-     std::cout << "start thread for " << id << std::endl;
      return StartConsumerThread( id, consumer, queue_it->second );
 }
 
