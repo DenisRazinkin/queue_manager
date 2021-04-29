@@ -8,20 +8,22 @@ include_directories(
         ${MAIN_LIB_DIRECTORY}
 )
 
-add_executable(test1
-        test1.cpp
-)
+#add_executable(test1
+#        test1.cpp
+#)
 
-target_link_libraries(test1
-        boost_system
-        boost_thread
-        boost_date_time
-        pthread
-        )
+#target_link_libraries(test1
+##        boost_system
+  #      boost_thread
+  #      boost_date_time
+  #      pthread
+  #      )
 
 add_executable(
         unit_tests
         test_bc_queue.cpp
+        test_lf_queue.cpp
+        test_mpsc_mq_manager.cpp
 )
 
 target_link_libraries(unit_tests

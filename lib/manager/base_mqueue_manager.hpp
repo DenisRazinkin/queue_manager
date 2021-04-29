@@ -8,6 +8,7 @@
 #include <mutex>
 
 #include "common.h"
+#include "producer/base_producer.hpp"
 
 namespace qm
 {
@@ -24,7 +25,7 @@ public:
      using Queues = boost::container::flat_map< Key, QueuePtr < Value > >;
 
      /// @brief Constructor
-     explicit IMultiQueueManager() = default;
+     explicit IMultiQueueManager();
 
      /// @brief Destructor
      virtual ~IMultiQueueManager() = default;
@@ -36,8 +37,11 @@ public:
      IMultiQueueManager &operator=( const IMultiQueueManager & ) = delete;
 
 public:
-     /// @brief Stop all producers and consumers
-     void StopProcessing();
+     /// @brief Stop all consumers, unregister all producers and disable queues
+     virtual void StopProcessing();
+
+     /// @brief Enable all consumers and queues
+     virtual void StartProcessing();
 
      /// @brief Add new queue for management
      /// @param id Key to access and control queue
@@ -150,6 +154,7 @@ State IMultiQueueManager< Key, Value >::AddQueue( Key id, QueuePtr< Value > queu
      if ( queues_.find( id ) == queues_.end())
      {
           queues_.emplace( id, queue );
+          queue->Enabled( true );
           return State::Ok;
      }
 
@@ -192,7 +197,7 @@ State IMultiQueueManager< Key, Value >::UnregisterProducer( Key id, ProducerPtr 
           if ( it->second == producer )
           {
                producer->Enabled( false );
-               producer->WaitDone();
+               producer->WaitThreadDone();
                producer->SetQueue( nullptr );
                producers_.erase( it );
                return State::Ok;
@@ -217,7 +222,6 @@ State IMultiQueueManager< Key, Value >::RemoveQueue( Key id )
           return State::QueueAbsent;
      }
 
-
      Unsubscribe( id );
      consumers_.erase( id );
 
@@ -225,7 +229,7 @@ State IMultiQueueManager< Key, Value >::RemoveQueue( Key id )
      for ( auto p_it = range.first; p_it != range.second; p_it++ )
      {
           p_it->second->Enabled( false );
-          p_it->second->WaitDone();
+          p_it->second->WaitThreadDone();
           p_it->second->SetQueue( nullptr );
      }
      producers_.erase( id );
@@ -299,13 +303,42 @@ void IMultiQueueManager< Key, Value >::StopProcessing()
      is_enabled_ = false;
      std::for_each( IMultiQueueManager< Key, Value >::queues_.begin(),
                     IMultiQueueManager< Key, Value >::queues_.end(), []( auto queue )
-                    { queue.second->Stop(); } );
+                    {
+                         queue.second->Stop();
+                    } );
      std::for_each( IMultiQueueManager< Key, Value >::consumers_.begin(),
                     IMultiQueueManager< Key, Value >::consumers_.end(), []( auto consumer )
-                    { consumer.second->Enabled( false ); } );
+                    {
+                         consumer.second->Enabled( false );
+                    } );
      std::for_each( IMultiQueueManager< Key, Value >::producers_.begin(),
-                    IMultiQueueManager< Key, Value >::producers_.end(), []( auto producer )
-                    { producer.second->Enabled( false ); } );
+                    IMultiQueueManager< Key, Value >::producers_.end(), [this]( auto producer )
+                    {
+                         UnregisterProducer( producer.first, producer.second );
+                         //producer.second->Enabled( false );
+                         //producer.second->SetQueue( nullptr );
+                    } );
+}
+
+template<typename Key, typename Value>
+void IMultiQueueManager< Key, Value >::StartProcessing()
+{
+     is_enabled_ = true;
+     std::for_each( IMultiQueueManager< Key, Value >::queues_.begin(),
+                    IMultiQueueManager< Key, Value >::queues_.end(), []( auto queue )
+                    {
+                         queue.second->Enabled( true );
+                    } );
+     std::for_each( IMultiQueueManager< Key, Value >::consumers_.begin(),
+                    IMultiQueueManager< Key, Value >::consumers_.end(), []( auto consumer )
+                    {
+                         consumer.second->Enabled( true );
+                    } );
+}
+
+template< typename Key, typename Value >
+IMultiQueueManager< Key, Value >::IMultiQueueManager() : is_enabled_( true )
+{
 }
 
 } // qm

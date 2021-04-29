@@ -9,6 +9,7 @@
 
 #include <boost/optional.hpp>
 
+#include "common.h"
 #include "queue_state.hpp"
 
 namespace qm
@@ -31,18 +32,22 @@ public:
      IQueue &operator=( const IQueue & ) = delete;
 
      /// @brief Stop queue handling
+     /// @details Thread safe
      virtual void Stop();
 
      /// @brief Is queue enabled
      /// @return true/false
+     /// @details Thread safe
      [[nodiscard]] inline bool Enabled() const;
 
      /// @brief Set is queue enabled
      /// @param enabled - true/false
+     /// @details Thread safe
      inline void Enabled( bool enabled );
 
      /// @brief Queue maximal size
      /// @return size_t
+     /// @details Thread safe
      [[nodiscard]] std::size_t MaxSize() const;
 
 public:
@@ -84,10 +89,6 @@ private:
      std::size_t size_;
      std::atomic< bool > enabled_;
 };
-
-/// @brief Alias name for shared pointer to queue
-template<typename Value>
-using QueuePtr = std::shared_ptr< IQueue< Value > >;
 
 template<typename Value>
 struct QueueResult

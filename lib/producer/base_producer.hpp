@@ -1,3 +1,5 @@
+/// @brief Base template producer class
+/// @author Denis Razinkin
 #pragma once
 
 #ifndef MQP_BASE_PRODUCER_H_
@@ -13,40 +15,51 @@
 namespace qm
 {
 
+/// @brief Base template producer class
+/// @tparam Key Type for queues map store.
+/// @tparam Value Type for queue store
 template< typename Key, typename Value >
 class IProducer
 {
 public:
+     /// @brief Constructor
+     /// @param id Key id
      explicit IProducer( Key id );
 
+     /// @brief Destructor
      virtual ~IProducer() = default;
 
+     /// @brief Is producer enabled
+     /// @return true/false
+     /// @details Thread safe
      [[nodiscard]] inline bool Enabled() const;
 
+     /// @brief Set is producer enabled
+     /// @param enabled - true/false
+     /// @details Thread safe
      inline void Enabled( bool enabled );
 
+     /// @brief Is producer`s work done
+     /// @return true/false
+     /// @details Thread safe
      [[nodiscard]] inline bool Done() const;
 
 public:
+     /// @brief Producer work function
      virtual void Produce() = 0;
 
-     virtual void WaitDone() = 0;
+     /// @brief Waiting for producer's thread has done
+     virtual void WaitThreadDone() = 0;
 
 protected:
      Key id_;
-     bool done_;
-     std::atomic< bool > enabled_ = true;
+     std::atomic< bool > done_;
+     std::atomic< bool > enabled_;
      QueuePtr <Value> queue_;
 
 private:
-
-     void SetQueue( QueuePtr <Value> queue )
-     {
-          queue_ = queue;
-     }
-
+     void SetQueue( QueuePtr <Value> queue );
      friend class IMultiQueueManager< Key, Value >;
-
 };
 
 template< typename Key, typename Value >
@@ -69,6 +82,12 @@ template< typename Key, typename Value >
 bool IProducer< Key, Value >::Done() const
 {
      return done_;
+}
+
+template< typename Key, typename Value >
+void IProducer< Key, Value >::SetQueue( QueuePtr< Value > queue )
+{
+     queue_ = queue;
 }
 
 } // qm

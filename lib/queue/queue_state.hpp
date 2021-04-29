@@ -22,7 +22,7 @@ enum class State
 /// @brief Text representation of queue state
 /// @param s - queue state
 /// @return - text description of queue state
-std::string StateStr( State s )
+inline std::string StateStr( State s )
 {
      switch ( s )
      {

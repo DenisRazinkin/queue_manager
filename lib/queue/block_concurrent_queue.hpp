@@ -204,14 +204,14 @@ State BlockConcurrentQueue< Value >::PushFwd( V &&obj )
                return queue_.size() < IQueue< Value >::MaxSize() || !IQueue< Value >::Enabled();
           } );
 
-          if ( queue_.size() >= IQueue< Value >::MaxSize())
-          {
-               return State::QueueFull;
-          }
-
           if ( !IQueue< Value >::Enabled())
           {
                return State::QueueDisabled;
+          }
+
+          if ( queue_.size() >= IQueue< Value >::MaxSize())
+          {
+               return State::QueueFull;
           }
 
           queue_.emplace( std::forward< V >( obj ));

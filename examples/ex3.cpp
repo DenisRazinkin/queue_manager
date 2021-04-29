@@ -1,19 +1,19 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-#include <queue/block_concurrent_queue.hpp>
+#include <queue/lock_free_queue.hpp>
 #include <manager/mpsc_mqueue_manager.hpp>
 #include <producer/base_producer.hpp>
 
 #include "consumer_thread.hpp"
 #include "producer.hpp"
 
-void ConcurrentQeueuWithProducerRegistration( int loops )
+void LockFreeQueueWithProducerRegistration( int loops )
 {
      auto workers = std::thread::hardware_concurrency() /2;
      qm::MPSCQueueManager<std::string, int> mpsc_manager;
      for ( std::size_t i = 0; i < workers; i++ )
      {
-          mpsc_manager.AddQueue( std::to_string( i ), std::make_shared< qm::BlockConcurrentQueue< int > >( 100 ) );
+          mpsc_manager.AddQueue( std::to_string( i ), std::make_shared< qm::LockFreeQueue< int > >( 100 ) );
      }
 
      auto time = boost::posix_time::microsec_clock::local_time();
@@ -37,13 +37,7 @@ void ConcurrentQeueuWithProducerRegistration( int loops )
      {
           auto consumer = std::make_shared< qm::QueueConsumerThreadWorker< std::string, int > > ( std::to_string( i ) );
           mpsc_manager.Subscribe( std::to_string( i ), consumer );
-
-          /*auto consumer2 = qm::QueueConsumerThreadWorker< std::string, int >::Make();
-          mpsc_manager.Subscribe( consumer2, std::to_string( i ) );
-          auto consumer3 = qm::MakePtr<qm::QueueConsumerThreadWorker< std::string, int > >();
-          mpsc_manager.Subscribe( consumer3, std::to_string( i ) );*/
      }
-
 
      //wait for consumer work done
      while ( !mpsc_manager.AreAllQueuesEmpty() || !mpsc_manager.AreAllProducersDone() )
@@ -51,35 +45,12 @@ void ConcurrentQeueuWithProducerRegistration( int loops )
           std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
      }
 
-
      auto time_end = boost::posix_time::microsec_clock::local_time();
      std::cout << time_end - time << std::endl;
 
      std::cout << "produced " << qm::counter_ << " objects." << std::endl;
      std::cout << "consumed " << qm::consumer_counter_ << " objects." << std::endl;
 }
-
-class QueueTestConsumer : public qm::IConsumer< int >
-{
-public:
-     explicit QueueTestConsumer() = default;
-     ~QueueTestConsumer() override = default;
-
-     void Consume( const int &value ) override
-     {
-          std::string msg = "consumer_counter: " + std::to_string( consumer_counter_ ) +
-                            " new value: " + std::to_string( value ) + "\n";
-          std::cout << msg;
-          consumer_counter_+=value;
-     };
-
-     int Result()
-     {
-          return consumer_counter_;
-     }
-private:
-     int consumer_counter_ = 0;
-};
 
 int main(int argc, char* argv[])
 {
@@ -101,7 +72,7 @@ int main(int argc, char* argv[])
           loops = 1000;
      }
 
-     ConcurrentQeueuWithProducerRegistration( loops );
+     LockFreeQueueWithProducerRegistration( loops );
 
      return 0;
 }

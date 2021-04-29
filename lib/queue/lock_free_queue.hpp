@@ -72,6 +72,7 @@ template< typename Value >
 void LockFreeQueue< Value >::Stop()
 {
      // Queue is nonblocking, nothing to do here
+     IQueue< Value >::Enabled( false );
 }
 
 template< typename Value >
@@ -100,24 +101,28 @@ std::optional< Value > LockFreeQueue< Value >::Pop()
 template< typename Value >
 State LockFreeQueue< Value >::Push( const Value &obj )
 {
+     if ( !IQueue< Value >::Enabled() ) return State::QueueDisabled;
      return queue_.bounded_push( obj ) ? State::Ok : State::QueueFull;
 }
 
 template< typename Value >
 State LockFreeQueue< Value >::Push( Value &&obj )
 {
+     if ( !IQueue< Value >::Enabled() ) return State::QueueDisabled;
      return queue_.bounded_push( std::move( obj )) ? State::Ok : State::QueueFull;
 }
 
 template< typename Value >
 State LockFreeQueue< Value >::TryPush( const Value &obj )
 {
+     if ( !IQueue< Value >::Enabled() ) return State::QueueDisabled;
      return queue_.bounded_push( obj ) ? State::Ok : State::QueueFull;
 }
 
 template< typename Value >
 State LockFreeQueue< Value >::TryPush( Value &&obj )
 {
+     if ( !IQueue< Value >::Enabled() ) return State::QueueDisabled;
      return queue_.bounded_push( std::move( obj )) ? State::Ok : State::QueueFull;
 }
 

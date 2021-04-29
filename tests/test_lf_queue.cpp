@@ -2,11 +2,11 @@
 
 #include <gtest/gtest.h>
 
-#include <queue/block_concurrent_queue.hpp>
+#include <queue/lock_free_queue.hpp>
 
-TEST(BlockConcurrentQueue, push_pop)
+TEST(LockFreeQueue, push_pop)
 {
-     qm::BlockConcurrentQueue<int> queue( 10 );
+     qm::LockFreeQueue<int> queue( 10 );
 
      int a = 1;
      int b = 1;
@@ -44,10 +44,10 @@ TEST(BlockConcurrentQueue, push_pop)
      ASSERT_FALSE( queue.Enabled() );
 }
 
-TEST(BlockConcurrentQueue, full_queue)
+TEST(LockFreeQueue, full_queue)
 {
      std::vector<int> values = { 1, 2, 3 };
-     qm::BlockConcurrentQueue<int> queue( values.size() );
+     qm::LockFreeQueue<int> queue( values.size() );
      ASSERT_TRUE( queue.Empty() );
 
      for ( const int &value : values )
@@ -55,7 +55,6 @@ TEST(BlockConcurrentQueue, full_queue)
           auto state = queue.Push( value );
           ASSERT_EQ( state, qm::State::Ok );
      }
-     ASSERT_EQ( queue.Size(), values.size() );
 
      auto state = queue.TryPush( 4 );
      ASSERT_EQ( state, qm::State::QueueFull );
@@ -63,10 +62,10 @@ TEST(BlockConcurrentQueue, full_queue)
 
 }
 
-TEST(BlockConcurrentQueue, enable_disable_queue)
+TEST(LockFreeQueue, enable_disable_queue)
 {
      std::vector<int> values = { 1, 2, 3 };
-     qm::BlockConcurrentQueue<int> queue( values.size() );
+     qm::LockFreeQueue<int> queue( values.size() );
      ASSERT_TRUE( queue.Empty() );
 
      for ( const int &value : values )
@@ -74,12 +73,6 @@ TEST(BlockConcurrentQueue, enable_disable_queue)
           auto state = queue.Push( value );
           ASSERT_EQ( state, qm::State::Ok );
      }
-
-     auto push_future = std::async( std::launch::async, [&queue] ()
-     {
-          auto state = queue.Push( 4 );
-          ASSERT_EQ( state, qm::State::QueueDisabled );
-     });
 
      queue.Enabled( false );
      ASSERT_FALSE( queue.Enabled() );

@@ -1,7 +1,6 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <queue/block_concurrent_queue.hpp>
-#include <queue/lock_free_queue.hpp>
 #include <manager/mpsc_mqueue_manager.hpp>
 #include <producer/base_producer.hpp>
 
@@ -30,10 +29,9 @@ void ConcurrentQeueuWithManagerEnqueue( int loops )
           producers.push_back( producer2 );
           producer2->Produce();
      }
-
      for ( std::size_t i = 0; i < workers; i++ )
      {
-          mpsc_manager->Subscribe( std::to_string( i ), std::make_shared< qm::QueueConsumerThreadWorker< int > >() );
+          mpsc_manager->Subscribe( std::to_string( i ), std::make_shared< qm::QueueConsumerThreadWorker< std::string, int > >(std::to_string( i )) );
      }
 
      while (  ! std::all_of( producers.begin(), producers.end(),
@@ -43,7 +41,7 @@ void ConcurrentQeueuWithManagerEnqueue( int loops )
      }
 
      //wait for consumer work done
-     while ( !mpsc_manager->AreAllQueuesEmpty() || !mpsc_manager->AreAllProducersDone() )
+     while ( !mpsc_manager->AreAllQueuesEmpty() )
      {
           std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
      }

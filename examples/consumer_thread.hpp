@@ -15,22 +15,19 @@ namespace qm
 
 std::atomic<int> consumer_counter_;
 
-template< typename Value >
+template< typename Key, typename Value >
 class QueueConsumerThreadWorker : public IConsumer< Value >
 {
 public:
-     QueueConsumerThreadWorker() {};
-     ~QueueConsumerThreadWorker() {};
+     explicit QueueConsumerThreadWorker( Key id ) : id_(id) {};
+     ~QueueConsumerThreadWorker() = default;
 
-     void Consume( const Value &obj )
+     void Consume( const Value & )
      {
-          //std::string msg = "consumer queue: " + key + " value: " + std::to_string( obj ) + " \n";
-          //std::cout << msg;
-          //std::cout.flush();
-          //std::cout << value;
           consumer_counter_++;
      };
 
+     Key id_;
 };
 
 
