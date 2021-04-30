@@ -18,18 +18,18 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-#set(GOOGLETEST_PATH ./_deps/googletest-src)
-#set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)
-#FetchContent_Declare(
-#        googlebenchmark
-#        GIT_REPOSITORY https://github.com/google/benchmark.git
-#        GIT_TAG        v1.5.3
-#)
+#set(GOOGLETEST_PATH /home/drazinkin/workspace/queue_manager/cmake-build-debug/_deps/googletest-src/ )
+set(BENCHMARK_ENABLE_GTEST_TESTS OFF)
+FetchContent_Declare(
+        googlebenchmark
+        GIT_REPOSITORY https://github.com/google/benchmark.git
+        GIT_TAG        v1.5.3
+)
 # configure build of googletest
 #set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 #set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
 #set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)
-#FetchContent_MakeAvailable( googlebenchmark)
+FetchContent_MakeAvailable( googlebenchmark )
 
 #ExternalProject_Get_Property(gtest_src install_dir)
 #set(GTEST_INCLUDE_DIR ${install_dir}/include)

@@ -1,19 +1,84 @@
 #include <benchmark/benchmark.h>
-#include "StringBenchmarks.h"
 
-static void BM_StringCreation(benchmark::State& state) {
-     for (auto _ : state)
-          std::string empty_string;
-}
-// Register the function as a benchmark
-BENCHMARK(BM_StringCreation);
+#include <manager/mpsc_mqueue_manager.hpp>
+#include <producer/base_producer.hpp>
+#include <queue/block_concurrent_queue.hpp>
+#include <queue/lock_free_queue.hpp>
 
-// Define another benchmark
-static void BM_StringCopy(benchmark::State& state) {
-     std::string x = "hello";
-     for (auto _ : state)
-          std::string copy(x);
+#include "examples/consumer_counter.h"
+#include "examples/producer_thread_loop_example.h"
+
+template< class QueueType >
+void SimpleLoopProducerRegistration( unsigned int workers, unsigned int loops, unsigned int producer_multiple )
+{
+     qm::example::produce_counter_ = 0;
+     qm::example::consumer_counter_ = 0;
+     if ( producer_multiple == 0 )
+     {
+          std::cout << "Invalid producers multiple.";
+          return;
+     }
+
+     auto mpsc_manager = qm::MPSCQueueManager<std::string, int>();
+     for ( std::size_t i = 0; i < workers; i++ )
+     {
+          mpsc_manager.AddQueue( std::to_string( i ), std::make_shared< QueueType >( 100 ) );
+     }
+
+     for ( std::size_t i = 0; i < workers * producer_multiple; i++ )
+     {
+          auto producer = std::make_shared< qm::example::SimpleLoopProducerThread<std::string, int> >( std::to_string( i / producer_multiple ), loops );
+          if ( mpsc_manager.RegisterProducer( std::to_string( i / producer_multiple ), producer ) == qm::State::Ok )
+          {
+               producer->Produce();
+          }
+     }
+
+     for ( std::size_t i = 0; i < workers; i++ )
+     {
+          auto consumer = std::make_shared< qm::example::ConsumerCounter< std::string, int > > ( std::to_string( i ) );
+          mpsc_manager.Subscribe( std::to_string( i ), consumer );
+     }
+
+     //wait for consumer work done
+     while ( !mpsc_manager.AreAllQueuesEmpty() || !mpsc_manager.AreAllProducersDone() )
+     {
+          std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
+     }
 }
-BENCHMARK(BM_StringCopy);
+
+template< class Queue>
+static void TestQueue(benchmark::State& state) {
+
+     for (auto _ : state)
+          SimpleLoopProducerRegistration< Queue >( state.range(0),
+                  state.range(1 ), state.range(2 ) );
+}
+BENCHMARK_TEMPLATE(TestQueue, qm::BlockConcurrentQueue< int > )->Unit(benchmark::kMillisecond)
+               ->Args( { std::thread::hardware_concurrency(), 1000, 1} )
+               ->Args( { std::thread::hardware_concurrency(), 1000, 4} )
+               ->Args( { std::thread::hardware_concurrency(), 1000, 16} )
+               ->Args( { std::thread::hardware_concurrency(), 100000, 1} )
+               ->Args( { std::thread::hardware_concurrency(), 100000, 4} )
+               ->Args( { std::thread::hardware_concurrency(), 100000, 16} )
+               ->Args( { std::thread::hardware_concurrency() * 8, 1000, 1} )
+               ->Args( { std::thread::hardware_concurrency() * 8, 1000, 4} )
+               ->Args( { std::thread::hardware_concurrency() * 8, 1000, 16} )
+               ->Args( { std::thread::hardware_concurrency() * 8, 100000, 1} )
+               ->Args( { std::thread::hardware_concurrency() * 8, 100000, 4} )
+               ->Args( { std::thread::hardware_concurrency() * 8, 100000, 16} );
+BENCHMARK_TEMPLATE(TestQueue, qm::LockFreeQueue< int > )->Unit(benchmark::kMillisecond)
+               ->Args( { std::thread::hardware_concurrency(), 1000, 1} )
+               ->Args( { std::thread::hardware_concurrency(), 1000, 4} )
+               ->Args( { std::thread::hardware_concurrency(), 1000, 16} )
+               ->Args( { std::thread::hardware_concurrency(), 100000, 1} )
+               ->Args( { std::thread::hardware_concurrency(), 100000, 4} )
+               ->Args( { std::thread::hardware_concurrency(), 100000, 16} )
+               ->Args( { std::thread::hardware_concurrency() * 8, 1000, 1} )
+               ->Args( { std::thread::hardware_concurrency() * 8, 1000, 4} )
+               ->Args( { std::thread::hardware_concurrency() * 8, 1000, 16} )
+               ->Args( { std::thread::hardware_concurrency() * 8, 100000, 1} )
+               ->Args( { std::thread::hardware_concurrency() * 8, 100000, 4} )
+               ->Args( { std::thread::hardware_concurrency() * 8, 100000, 16} );
 
 BENCHMARK_MAIN();

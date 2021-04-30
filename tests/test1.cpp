@@ -14,7 +14,7 @@
 #include <manager/mpsc_mqueue_manager.hpp>
 #include <producer/base_producer.hpp>
 
-#include <examples/consumer_counter.hpp>
+#include <examples/consumer_counter.h>
 #include <examples/producer_thread_loop_example.h>
 
 std::atomic<int> producer_count(0);

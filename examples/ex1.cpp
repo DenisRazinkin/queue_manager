@@ -5,7 +5,7 @@
 #include <queue/block_concurrent_queue.hpp>
 #include <queue/lock_free_queue.hpp>
 
-#include "consumer_counter.hpp"
+#include "consumer_counter.h"
 #include "producer_thread_loop_example.h"
 
 template< class QueueType >

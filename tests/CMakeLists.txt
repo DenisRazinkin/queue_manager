@@ -38,7 +38,7 @@ add_custom_command(TARGET unit_tests
         POST_BUILD
         COMMAND ctest -C $<CONFIGURATION> --output-on-failure)
 
-#add_subdirectory( benchmarks )
+add_subdirectory( benchmarks )
 
 
 
