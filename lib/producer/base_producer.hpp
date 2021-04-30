@@ -46,6 +46,19 @@ public:
 
 public:
      /// @brief Producer work function
+     /// Producer must check enabled_ value and breaks processing on disable signal
+     /// Also, it should set done = true when work is done
+     /// Example:
+     /// Value obj = GetProducedValue();
+     /// while ( IProducer< Key, Value >::enabled_.load() &&
+     //           state = IProducer< Key, Value >::queue_->Push( obj ) ) != qm::State::Ok )
+     //  {
+     //       if ( state == qm::State::QueueDisabled )
+     //       {
+     //              break;
+     //       }
+     //  }
+     //  IProducer< Key, Value >::done_ = true;
      virtual void Produce() = 0;
 
      /// @brief Waiting for producer's thread has done

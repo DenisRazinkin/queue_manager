@@ -48,19 +48,19 @@ public:
      /// @param queue Pointer to queue
      /// @return State value
      /// @details Thread safe
-     State AddQueue( Key id, QueuePtr <Value> queue );
+     State AddQueue(const Key &id, QueuePtr <Value> queue );
 
      /// @brief Get queue stored with specified id
      /// @param id Key to get queue
      /// @return State value
      /// @details Thread safe
-     State RemoveQueue( Key id );
+     State RemoveQueue( const Key &id );
 
      /// @brief Get queue stored with specified id
      /// @param id Key to get queue
      /// @return State value
      /// @details Thread safe
-     QueueResult <Value> GetQueue( Key id ) const;
+     QueueResult <Value> GetQueue( const Key &id ) const;
 
      /// @brief Check are all queue empty
      /// @return true/false
@@ -78,20 +78,20 @@ public:
      /// @param consumer Pointer to consumer
      /// @return State value
      /// @attention Thread-safe is required.
-     virtual State Subscribe( Key id, ConsumerPtr < Value> consumer ) = 0;
+     virtual State Subscribe( const Key &id, ConsumerPtr < Value> consumer ) = 0;
 
      /// @brief Unsubscribe all consumers from queue
      /// @param id Key to find required queue
      /// @return State value
      /// @attention Thread-safe is required.
-     virtual State Unsubscribe( Key id ) = 0;
+     virtual State Unsubscribe( const Key &id ) = 0;
 
      /// @brief Unsubscribe specified consumer from queue with id
      /// @param id Key to find required queue
      /// @param consumer Pointer to consumer
      /// @return State value
      /// @attention Thread-safe is required.
-     virtual State Unsubscribe( Key id, ConsumerPtr < Value> consumer ) = 0;
+     virtual State Unsubscribe( const Key &id, ConsumerPtr < Value> consumer ) = 0;
 
 public:
      /// @brief Register new producer for queue with id.
@@ -101,14 +101,14 @@ public:
      /// @param producer Pointer to producer
      /// @return State value
      /// @details Thread safe.
-     virtual State RegisterProducer( Key id, ProducerPtr <Key, Value> producer );
+     virtual State RegisterProducer( const Key &id, ProducerPtr <Key, Value> producer );
 
      /// @brief Unregister producer from queue using.
      /// @param id id Key to find required queue
      /// @param producer Pointer to producer
      /// @return State value
      /// @details Thread safe.
-     virtual State UnregisterProducer( Key id, ProducerPtr <Key, Value> producer );
+     virtual State UnregisterProducer( const Key &id, ProducerPtr <Key, Value> producer );
 
      /// @brief Enqueue new value to queue with id
      /// @param id Lvalue key to find queue
@@ -148,7 +148,7 @@ private:
 };
 
 template<typename Key, typename Value>
-State IMultiQueueManager< Key, Value >::AddQueue( Key id, QueuePtr< Value > queue )
+State IMultiQueueManager< Key, Value >::AddQueue( const Key &id, QueuePtr< Value > queue )
 {
      std::scoped_lock lock( mtx_ );
      if ( queues_.find( id ) == queues_.end())
@@ -162,7 +162,7 @@ State IMultiQueueManager< Key, Value >::AddQueue( Key id, QueuePtr< Value > queu
 }
 
 template<typename Key, typename Value>
-State IMultiQueueManager< Key, Value >::RegisterProducer( Key id, ProducerPtr< Key, Value > producer )
+State IMultiQueueManager< Key, Value >::RegisterProducer( const Key &id, ProducerPtr< Key, Value > producer )
 {
      std::scoped_lock lock_guard( mtx_ );
      auto queue_result = GetQueue( id );
@@ -182,7 +182,7 @@ State IMultiQueueManager< Key, Value >::RegisterProducer( Key id, ProducerPtr< K
 }
 
 template<typename Key, typename Value>
-State IMultiQueueManager< Key, Value >::UnregisterProducer( Key id, ProducerPtr <Key, Value> producer )
+State IMultiQueueManager< Key, Value >::UnregisterProducer( const Key &id, ProducerPtr <Key, Value> producer )
 {
      std::scoped_lock lock_guard( mtx_ );
      auto queue_result = GetQueue( id );
@@ -208,7 +208,7 @@ State IMultiQueueManager< Key, Value >::UnregisterProducer( Key id, ProducerPtr 
 }
 
 template<typename Key, typename Value>
-State IMultiQueueManager< Key, Value >::RemoveQueue( Key id )
+State IMultiQueueManager< Key, Value >::RemoveQueue( const Key &id )
 {
      std::scoped_lock lock( mtx_ );
      auto it = queues_.find( id );
@@ -238,7 +238,7 @@ State IMultiQueueManager< Key, Value >::RemoveQueue( Key id )
 }
 
 template<typename Key, typename Value>
-QueueResult <Value> IMultiQueueManager< Key, Value >::GetQueue( Key id ) const
+QueueResult <Value> IMultiQueueManager< Key, Value >::GetQueue( const Key &id ) const
 {
      std::scoped_lock lock( IMultiQueueManager< Key, Value >::mtx_ );
      auto it = IMultiQueueManager< Key, Value >::queues_.find( id );
@@ -301,6 +301,7 @@ template<typename Key, typename Value>
 void IMultiQueueManager< Key, Value >::StopProcessing()
 {
      is_enabled_ = false;
+     std::lock_guard<std::recursive_mutex> lock(IMultiQueueManager< Key, Value >::mtx_ );
      std::for_each( IMultiQueueManager< Key, Value >::queues_.begin(),
                     IMultiQueueManager< Key, Value >::queues_.end(), []( auto queue )
                     {
@@ -314,10 +315,11 @@ void IMultiQueueManager< Key, Value >::StopProcessing()
      std::for_each( IMultiQueueManager< Key, Value >::producers_.begin(),
                     IMultiQueueManager< Key, Value >::producers_.end(), [this]( auto producer )
                     {
-                         UnregisterProducer( producer.first, producer.second );
-                         //producer.second->Enabled( false );
-                         //producer.second->SetQueue( nullptr );
+                         producer.second->Enabled( false );
+                         producer.second->WaitThreadDone();
+                         producer.second->SetQueue( nullptr );
                     } );
+     producers_.clear();
 }
 
 template<typename Key, typename Value>

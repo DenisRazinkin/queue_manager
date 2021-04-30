@@ -32,6 +32,7 @@ public:
 
 public:
      /// @brief Pure virtual func for object processing
+     /// Consume function makes handle to object dequeued from attached queue.
      /// @param obj Object
      virtual void Consume( const Value &obj ) = 0;
 

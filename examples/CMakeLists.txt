@@ -12,7 +12,6 @@ include_directories(
 
 add_executable(ex1 ex1.cpp)
 add_executable(ex2 ex2.cpp)
-add_executable(ex3 ex3.cpp)
 
 #target_link_libraries(test1
 #

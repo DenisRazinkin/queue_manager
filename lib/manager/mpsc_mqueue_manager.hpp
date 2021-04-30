@@ -43,7 +43,7 @@ public:
      /// @param consumer Consumer for subscribe.
      /// @return State value
      /// @details Thread safe
-     State Subscribe( Key id, ConsumerPtr< Value > consumer ) override;
+     State Subscribe( const Key &id, ConsumerPtr< Value > consumer ) override;
 
      /// @brief Unsubscribe consumer from queue
      /// @param id Key to find queue
@@ -51,7 +51,7 @@ public:
      /// @attention Unsubscribe from blocking queue may lead to producers threads locks waiting for free space.
      /// If queue is not needed anymore, should use RemoveQueue method from base class.
      /// @details Thread safe
-     State Unsubscribe( Key id ) override;
+     State Unsubscribe( const Key &id ) override;
 
      /// @brief Unsubscribe consumer from queue. Behaviour is equal to function without consumer arg.
      /// @param id Key to find queue
@@ -60,13 +60,13 @@ public:
      /// @attention Unsubscribe from blocking queue may lead to producers threads locks waiting for free space.
      /// If queue is not needed anymore, should use RemoveQueue method from base class.
      /// @details Thread safe
-     State Unsubscribe( Key id, ConsumerPtr < Value> consumer ) override;
+     State Unsubscribe( const Key &id, ConsumerPtr < Value> consumer ) override;
 
 protected:
      bool ProducerRegistrationAllowed( Key ) const override;
 
 private:
-     State StartConsumerThread( Key id, ConsumerPtr <Value> consumer, QueuePtr <Value> queue );
+     State StartConsumerThread( const Key &id, ConsumerPtr <Value> consumer, QueuePtr <Value> queue );
 
      boost::container::flat_map< Key, std::thread > consumer_threads_;
 };
@@ -98,7 +98,6 @@ void MPSCQueueManager< Key, Value >::StartProcessing()
      if ( IMultiQueueManager< Key, Value >::is_enabled_ )
      {
           return;
-
      }
 
      IMultiQueueManager< Key, Value >::StartProcessing();
@@ -114,7 +113,7 @@ void MPSCQueueManager< Key, Value >::StartProcessing()
 }
 
 template<typename Key, typename Value>
-State MPSCQueueManager< Key, Value >::StartConsumerThread( Key id, ConsumerPtr< Value > consumer, QueuePtr< Value > queue )
+State MPSCQueueManager< Key, Value >::StartConsumerThread( const Key &id, ConsumerPtr< Value > consumer, QueuePtr< Value > queue )
 {
      auto thread_lambda = [ this, id, queue, consumer ]()
      {
@@ -134,7 +133,7 @@ State MPSCQueueManager< Key, Value >::StartConsumerThread( Key id, ConsumerPtr< 
 }
 
 template<typename Key, typename Value>
-State MPSCQueueManager< Key, Value >::Subscribe( Key id, ConsumerPtr< Value > consumer )
+State MPSCQueueManager< Key, Value >::Subscribe( const Key &id, ConsumerPtr< Value > consumer )
 {
      std::scoped_lock lock( IMultiQueueManager< Key, Value >::mtx_ );
      if ( IMultiQueueManager< Key, Value >::consumers_.find( id ) !=
@@ -161,7 +160,7 @@ bool MPSCQueueManager< Key, Value >::ProducerRegistrationAllowed( Key ) const
 }
 
 template<typename Key, typename Value>
-State MPSCQueueManager< Key, Value >::Unsubscribe( Key id )
+State MPSCQueueManager< Key, Value >::Unsubscribe( const Key &id )
 {
      std::scoped_lock lock( IMultiQueueManager< Key, Value >::mtx_ );
      auto consumer = IMultiQueueManager< Key, Value >::consumers_.find( id );
@@ -185,7 +184,7 @@ State MPSCQueueManager< Key, Value >::Unsubscribe( Key id )
 }
 
 template<typename Key, typename Value>
-State MPSCQueueManager< Key, Value >::Unsubscribe( Key id, ConsumerPtr< Value > )
+State MPSCQueueManager< Key, Value >::Unsubscribe( const Key &id, ConsumerPtr< Value > )
 {
      return Unsubscribe( id );
 }

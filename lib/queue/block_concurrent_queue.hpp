@@ -193,14 +193,10 @@ template< typename Value >
 template< typename V >
 State BlockConcurrentQueue< Value >::PushFwd( V &&obj )
 {
-     //std::string msg = "push " + std::to_string( obj );
-     //std::cout << msg;
      {
           std::unique_lock lock( mtx );
-          //std::cout << std::this_thread::get_id() << " queue enabled_ " << IQueue<Value>::Enabled() << " obj " << obj << " queue size:" << queue_.size() << std::endl;
           push_cv_.wait( lock, [ this, obj ]()
           {
-               //std::cout << "this queue " << this << " enabled " << IQueue<Value>::Enabled() << std::endl;
                return queue_.size() < IQueue< Value >::MaxSize() || !IQueue< Value >::Enabled();
           } );
 

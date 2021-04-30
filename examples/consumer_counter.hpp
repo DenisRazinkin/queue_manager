@@ -10,17 +10,17 @@
 #include <queue/block_concurrent_queue.hpp>
 #include <manager/base_mqueue_manager.hpp>
 
-namespace qm
+namespace qm::example
 {
 
 std::atomic<int> consumer_counter_;
 
 template< typename Key, typename Value >
-class QueueConsumerThreadWorker : public IConsumer< Value >
+class ConsumerCounter : public IConsumer< Value >
 {
 public:
-     explicit QueueConsumerThreadWorker( Key id ) : id_(id) {};
-     ~QueueConsumerThreadWorker() = default;
+     explicit ConsumerCounter( Key id ) : id_( id) {};
+     ~ConsumerCounter() = default;
 
      void Consume( const Value & )
      {
